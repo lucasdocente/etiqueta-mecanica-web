@@ -71,8 +71,8 @@
     const rows=(data.maintenance||[]).filter(row=>row.enabled&&row.name.trim()&&row.value.trim());
     const noteLines=data.notes?.trim()?wrap(data.notes.trim(),4.8,cw).slice(0,2):[];
     const noteH=(noteLines.length*3.2+(noteLines.length?1.5:0))*MM,available=Math.max(0,top-bottom-noteH);
-    if(rows.length&&available>3*MM){const hh=4.3*MM,rh=(available-hh)/rows.length,base=Math.max(3.2,Math.min(8.2,rh*.48));out+=textCmd('PRÓXIMAS MANUTENÇÕES','F2',Math.min(7.5,base),pad,top-Math.min(7.5,base));let rowTop=top-hh;
-      rows.forEach((row,i)=>{if(i)out+=lineCmd(pad,rowTop,w-pad,rowTop,.25);const left=fitWrapped(row.name,base,cw*.59,rh*.82),right=fitWrapped(row.value,base,cw*.38,rh*.82,true);let ly=rowTop-(rh-left.lines.length*left.size*1.15)/2-left.size,ry=rowTop-(rh-right.lines.length*right.size*1.15)/2-right.size;left.lines.forEach(line=>{out+=textCmd(line,'F1',left.size,pad,ly);ly-=left.size*1.15;});right.lines.forEach(line=>{out+=textCmd(line,'F2',right.size,w-pad,ry,'right');ry-=right.size*1.15;});rowTop-=rh;});}
+    if(rows.length&&available>3*MM){const hh=4.3*MM,rh=(available-hh)/rows.length,base=Math.max(3.2,Math.min(8.2,rh*.48));out+=textCmd('PRÓXIMAS TROCAS','F2',Math.min(7.5,base),w/2,top-Math.min(7.5,base),'center');let rowTop=top-hh;
+      rows.forEach((row,i)=>{if(i)out+=lineCmd(pad,rowTop,w-pad,rowTop,.25);const category=row.name.trim().toLocaleUpperCase('pt-BR'),left=fitWrapped(category,base,cw*.59,rh*.82),right=fitWrapped(row.value,base,cw*.38,rh*.82,true);let ly=rowTop-(rh-left.lines.length*left.size*1.15)/2-left.size,ry=rowTop-(rh-right.lines.length*right.size*1.15)/2-right.size;left.lines.forEach(line=>{out+=textCmd(line,'F1',left.size,pad,ly);ly-=left.size*1.15;});right.lines.forEach(line=>{out+=textCmd(line,'F2',right.size,w-pad,ry,'right');ry-=right.size*1.15;});rowTop-=rh;});}
     if(noteLines.length){let y=bottom+(noteLines.length-1)*3.2*MM;noteLines.forEach(line=>{out+=textCmd(shorten(line,4.8,cw),'F3',4.8,pad,y);y-=3.2*MM;});}
     return out;
   }

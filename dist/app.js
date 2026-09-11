@@ -9,10 +9,10 @@
     ['100 × 70 mm', 100, 70], ['Personalizado', null, null],
   ];
   const baseMaintenance = [
-    'Troca de óleo do motor', 'Filtro de óleo', 'Filtro de ar',
-    'Filtro de combustível', 'Filtro do ar-condicionado', 'Fluido de freio',
-    'Líquido de arrefecimento', 'Óleo do câmbio', 'Correia dentada',
-    'Alinhamento e balanceamento',
+    'ÓLEO MOTOR', 'FILTRO DE ÓLEO', 'FILTRO DE AR',
+    'FILTRO DE COMBUSTÍVEL', 'FILTRO DO AR-CONDICIONADO', 'FLUIDO DE FREIO',
+    'LÍQUIDO DE ARREFECIMENTO', 'ÓLEO DO CÂMBIO', 'CORREIA DENTADA',
+    'ALINHAMENTO E BALANCEAMENTO',
   ];
   const uid = () => globalThis.crypto?.randomUUID?.() ||
     `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
@@ -42,6 +42,43 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => element.classList.remove('show'), 2600);
   }
   function formatNumber(value) { return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 }); }
+  function kmDigits(value) { return String(value || '').replace(/\D/g, ''); }
+  function formatKmNumber(value) {
+    const digits = kmDigits(value);
+    return digits ? Number(digits).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '';
+  }
+  function formatCurrentKm(value) {
+    const formatted = formatKmNumber(value);
+    return formatted ? `KM ${formatted}` : '';
+  }
+  function formatFutureKm(value) {
+    return `${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} KM`;
+  }
+  function normalizeMaintenanceName(value) {
+    const name = String(value || '').trim();
+    if (name.toLocaleUpperCase('pt-BR') === 'TROCA DE ÓLEO DO MOTOR') return 'ÓLEO MOTOR';
+    return name.toLocaleUpperCase('pt-BR');
+  }
+  function normalizeMaintenanceValue(value) {
+    const valueText = String(value || '').trim();
+    if (!valueText || /[\/-]/.test(valueText) || !/^(?:KM\s*)?[\d.\s]+(?:\s*KM)?$/i.test(valueText)) return valueText;
+    const formatted = formatKmNumber(valueText);
+    return formatted ? `${formatted} KM` : valueText;
+  }
+  function updateAutomaticMaintenance() {
+    const current = Number(kmDigits($('currentKm').value));
+    if (!current) return;
+    const automaticValue = formatFutureKm(current + 5000);
+    maintenance.forEach(item => {
+      const name = normalizeMaintenanceName(item.name);
+      if (name === 'ÓLEO MOTOR' || name === 'FILTRO DE ÓLEO') {
+        item.name = name;
+        item.value = automaticValue;
+        item.enabled = true;
+      }
+    });
+    renderMaintenance();
+  }
   function selectedOrientation() { return document.querySelector('[name=orientation]:checked').value; }
   function validateDimensions(showMessage = true) {
     const width = Number($('width').value), height = Number($('height').value);
@@ -51,11 +88,13 @@
   }
   function collect() {
     return {
-      width: Number($('width').value) || 50, height: Number($('height').value) || 80,
+      width: Number($('width').value) || 50, height: Number($('height').value) || 70,
       workshop: $('workshop').value, contact: $('contact').value,
       customer: $('customer').value, plate: $('plate').value, vehicle: $('vehicle').value,
-      serviceDate: $('serviceDate').value, currentKm: $('currentKm').value,
-      notes: $('notes').value, maintenance: maintenance.map(item => ({ ...item })),
+      serviceDate: $('serviceDate').value, currentKm: formatCurrentKm($('currentKm').value),
+      notes: $('notes').value, maintenance: maintenance.map(item => ({
+        ...item, name: normalizeMaintenanceName(item.name), value: normalizeMaintenanceValue(item.value),
+      })),
     };
   }
   function schedulePreview() {
@@ -85,6 +124,7 @@
   function renderMaintenance() {
     const list = $('maintenanceList'); list.replaceChildren();
     maintenance.forEach(item => {
+      item.name = normalizeMaintenanceName(item.name);
       const row = document.createElement('div'); row.className = 'maintenance-row';
       const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'check';
       check.checked = item.enabled; check.setAttribute('aria-label', `Incluir ${item.name}`);
@@ -95,8 +135,14 @@
       const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'remove-row';
       remove.textContent = '×'; remove.title = item.custom ? 'Remover campo' : 'Limpar campo';
       check.addEventListener('change', () => { item.enabled = check.checked; schedulePreview(); });
-      name.addEventListener('input', () => { item.name = name.value; check.setAttribute('aria-label', `Incluir ${item.name}`); schedulePreview(); });
+      name.addEventListener('input', () => {
+        item.name = normalizeMaintenanceName(name.value); name.value = item.name;
+        check.setAttribute('aria-label', `Incluir ${item.name}`); schedulePreview();
+      });
       value.addEventListener('input', () => { item.value = value.value; schedulePreview(); });
+      value.addEventListener('blur', () => {
+        item.value = normalizeMaintenanceValue(value.value); value.value = item.value; schedulePreview();
+      });
       remove.addEventListener('click', () => {
         if (item.custom) maintenance = maintenance.filter(entry => entry.id !== item.id);
         else { item.value = ''; item.enabled = false; }
@@ -142,7 +188,11 @@
     document.querySelector(`[name=orientation][value=${template.orientation || 'portrait'}]`).checked = true;
     applyPreset(); $('width').value = template.width; $('height').value = template.height;
     Object.entries(template.fields || {}).forEach(([id, value]) => { if ($(id)) $(id).value = value; });
-    maintenance = Array.isArray(template.maintenance) ? template.maintenance.map(item => ({ ...item, id: uid() })) : maintenance;
+    $('currentKm').value = formatCurrentKm($('currentKm').value);
+    maintenance = Array.isArray(template.maintenance) ? template.maintenance.map(item => ({
+      ...item, id: uid(), name: normalizeMaintenanceName(item.name), value: normalizeMaintenanceValue(item.value),
+    })) : maintenance;
+    updateAutomaticMaintenance();
     $('copies').value = Math.max(1, Math.min(100, Number(template.copies) || 1));
     renderMaintenance(); schedulePreview(); toast(`Modelo “${template.name}” carregado.`);
   }
@@ -176,15 +226,19 @@
   }
 
   presets.forEach(item => $('preset').add(new Option(item[0], item[0])));
-  $('preset').value = '80 × 50 mm';
+  $('preset').value = '70 × 50 mm';
   loadStorage(); refreshTemplates(); renderMaintenance(); applyPreset();
   document.querySelectorAll('input,select,textarea').forEach(input => {
     if (!['templateSelect','templateName','copies'].includes(input.id) && input.name !== 'orientation') input.addEventListener('input', schedulePreview);
   });
   document.querySelectorAll('[name=orientation]').forEach(radio => radio.addEventListener('change', applyPreset));
+  $('currentKm').addEventListener('input', () => {
+    $('currentKm').value = formatCurrentKm($('currentKm').value);
+    updateAutomaticMaintenance(); schedulePreview();
+  });
   $('preset').addEventListener('change', applyPreset);
   $('addMaintenance').addEventListener('click', () => {
-    maintenance.push({ id: uid(), name: 'Nova manutenção', value: '', enabled: true, custom: true });
+    maintenance.push({ id: uid(), name: 'NOVA MANUTENÇÃO', value: '', enabled: true, custom: true });
     renderMaintenance(); schedulePreview();
   });
   $('loadTemplate').addEventListener('click', loadTemplate);
@@ -245,9 +299,11 @@
           if (input[id] !== undefined) $(id).value = String(input[id]);
         });
         if (Array.isArray(input.maintenance)) maintenance = input.maintenance.map(item => ({
-          id: uid(), name: String(item.name), value: String(item.value),
+          id: uid(), name: normalizeMaintenanceName(item.name), value: normalizeMaintenanceValue(item.value),
           enabled: item.enabled !== false, custom: true,
         }));
+        $('currentKm').value = formatCurrentKm($('currentKm').value);
+        updateAutomaticMaintenance();
         renderMaintenance(); schedulePreview();
         return { status: 'configured', width: Number($('width').value), height: Number($('height').value) };
       },
