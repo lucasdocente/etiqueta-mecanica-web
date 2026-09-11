@@ -1,0 +1,10 @@
+{
+  "name": "Etiqueta Mecânica",
+  "short_name": "Etiqueta",
+  "description": "Gerador de etiquetas térmicas para manutenção automotiva",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f1eb",
+  "theme_color": "#171816",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
