@@ -49,7 +49,7 @@
   }
   function formatCurrentKm(value) {
     const formatted = formatKmNumber(value);
-    return formatted ? `KM ${formatted}` : '';
+    return formatted ? `${formatted} KM` : '';
   }
   function formatFutureKm(value) {
     return `${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} KM`;
@@ -129,13 +129,14 @@
       const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'check';
       check.checked = item.enabled; check.setAttribute('aria-label', `Incluir ${item.name}`);
       const name = document.createElement('input'); name.type = 'text'; name.value = item.name;
-      name.placeholder = 'Nome da manutenção'; name.maxLength = 80;
+      name.placeholder = 'Nome da categoria'; name.maxLength = 80; name.className = 'maintenance-name';
+      name.readOnly = !item.custom;
       const value = document.createElement('input'); value.type = 'text'; value.value = item.value;
       value.placeholder = 'KM ou data'; value.maxLength = 50; value.className = 'maintenance-value';
       const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'remove-row';
       remove.textContent = '×'; remove.title = item.custom ? 'Remover campo' : 'Limpar campo';
       check.addEventListener('change', () => { item.enabled = check.checked; schedulePreview(); });
-      name.addEventListener('input', () => {
+      if (item.custom) name.addEventListener('input', () => {
         item.name = normalizeMaintenanceName(name.value); name.value = item.name;
         check.setAttribute('aria-label', `Incluir ${item.name}`); schedulePreview();
       });
@@ -215,11 +216,10 @@
     }
     const copies = Math.max(1, Math.min(100, Number($('copies').value) || 1));
     const blob = new Blob([LabelPdf.build(data, copies)], { type: 'application/pdf' });
-    const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
-    const plate = data.plate.trim().replace(/[^a-z0-9]/gi, '_');
-    link.download = plate ? `etiqueta_${plate}.pdf` : 'etiqueta_termica.pdf';
-    document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 1500);
-    persist(); toast(`PDF gerado com ${copies} ${copies === 1 ? 'cópia' : 'cópias'}.`);
+    const pdfUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a'); link.href = pdfUrl; link.target = '_blank'; link.rel = 'noopener';
+    document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000);
+    persist(); toast(`PDF aberto em nova guia com ${copies} ${copies === 1 ? 'cópia' : 'cópias'}.`);
   }
   function adjustCopies(delta) {
     $('copies').value = Math.max(1, Math.min(100, (Number($('copies').value) || 1) + delta));
@@ -238,7 +238,7 @@
   });
   $('preset').addEventListener('change', applyPreset);
   $('addMaintenance').addEventListener('click', () => {
-    maintenance.push({ id: uid(), name: 'NOVA MANUTENÇÃO', value: '', enabled: true, custom: true });
+    maintenance.push({ id: uid(), name: 'NOVA CATEGORIA', value: '', enabled: true, custom: true });
     renderMaintenance(); schedulePreview();
   });
   $('loadTemplate').addEventListener('click', loadTemplate);
@@ -257,59 +257,6 @@
   $('minusCopy').addEventListener('click', () => adjustCopies(-1));
   $('plusCopy').addEventListener('click', () => adjustCopies(1));
   window.addEventListener('beforeunload', () => { persist(); if (previewUrl) URL.revokeObjectURL(previewUrl); });
-  if (document.modelContext?.registerTool) {
-    const lifecycle = new AbortController();
-    Promise.resolve(document.modelContext.registerTool({
-      name: 'read_label_configuration',
-      title: 'Ler configuração da etiqueta',
-      description: 'Retorna os dados atualmente preenchidos no gerador de etiqueta térmica.',
-      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-      annotations: { readOnlyHint: true, untrustedContentHint: false },
-      execute() { return { ...collect(), copies: Number($('copies').value) || 1 }; },
-    }, { signal: lifecycle.signal })).catch(() => {});
-    Promise.resolve(document.modelContext.registerTool({
-      name: 'configure_thermal_label',
-      title: 'Configurar etiqueta térmica',
-      description: 'Preenche e atualiza a etiqueta térmica visível, incluindo formato, veículo e manutenções.',
-      inputSchema: {
-        type: 'object', additionalProperties: false,
-        properties: {
-          width: { type: 'number', minimum: 20, maximum: 120 },
-          height: { type: 'number', minimum: 20, maximum: 120 },
-          orientation: { type: 'string', enum: ['portrait', 'landscape'] },
-          workshop: { type: 'string' }, contact: { type: 'string' },
-          customer: { type: 'string' }, plate: { type: 'string' }, vehicle: { type: 'string' },
-          serviceDate: { type: 'string' }, currentKm: { type: 'string' }, notes: { type: 'string' },
-          maintenance: { type: 'array', items: { type: 'object', additionalProperties: false,
-            properties: { name: { type: 'string' }, value: { type: 'string' }, enabled: { type: 'boolean' } },
-            required: ['name', 'value'] } },
-        },
-      },
-      annotations: { readOnlyHint: false, untrustedContentHint: false },
-      execute(input) {
-        if (!input || typeof input !== 'object') throw new Error('Configuração inválida.');
-        if (input.width !== undefined || input.height !== undefined) {
-          const width = Number(input.width ?? $('width').value), height = Number(input.height ?? $('height').value);
-          if (width < 20 || width > 120 || height < 20 || height > 120) throw new Error('Dimensões fora do limite de 20 a 120 mm.');
-          $('preset').value = 'Personalizado'; $('width').disabled = false; $('height').disabled = false;
-          $('width').value = width; $('height').value = height;
-        }
-        if (input.orientation) document.querySelector(`[name=orientation][value=${input.orientation}]`).checked = true;
-        ['workshop','contact','customer','plate','vehicle','serviceDate','currentKm','notes'].forEach(id => {
-          if (input[id] !== undefined) $(id).value = String(input[id]);
-        });
-        if (Array.isArray(input.maintenance)) maintenance = input.maintenance.map(item => ({
-          id: uid(), name: normalizeMaintenanceName(item.name), value: normalizeMaintenanceValue(item.value),
-          enabled: item.enabled !== false, custom: true,
-        }));
-        $('currentKm').value = formatCurrentKm($('currentKm').value);
-        updateAutomaticMaintenance();
-        renderMaintenance(); schedulePreview();
-        return { status: 'configured', width: Number($('width').value), height: Number($('height').value) };
-      },
-    }, { signal: lifecycle.signal })).catch(() => {});
-    window.addEventListener('pagehide', () => lifecycle.abort(), { once: true });
-  }
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
   schedulePreview();
 })();
