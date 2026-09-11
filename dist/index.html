@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#171816">
+  <meta name="description" content="Crie etiquetas térmicas de manutenção automotiva diretamente no navegador.">
+  <title>Etiqueta Mecânica</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="#top" aria-label="Etiqueta Mecânica — início">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><path d="M7 7h18v18H7z"/><path d="M11 12h10M11 16h8M11 20h9"/></svg>
+      </span>
+      <span><strong>Etiqueta</strong> Mecânica</span>
+    </a>
+    <div class="privacy-badge"><span></span> Seus dados ficam neste dispositivo</div>
+  </header>
+
+  <main id="top" class="workspace">
+    <section class="editor" aria-label="Configuração da etiqueta">
+      <div class="intro-row">
+        <div>
+          <p class="eyebrow">GERADOR TÉRMICO</p>
+          <h1>Prepare a próxima visita.</h1>
+        </div>
+        <button class="ghost-button" id="resetButton" type="button">Limpar atendimento</button>
+      </div>
+
+      <section class="panel model-panel">
+        <div class="section-heading">
+          <div><span class="step">01</span><h2>Modelos rápidos</h2></div>
+          <span class="counter" id="modelCounter">0 de 5</span>
+        </div>
+        <div class="model-actions">
+          <label class="field grow"><span>Modelo salvo</span>
+            <select id="templateSelect"><option value="">Novo modelo</option></select>
+          </label>
+          <button class="button secondary" id="loadTemplate" type="button">Carregar</button>
+          <button class="button dark" id="saveTemplate" type="button">Salvar modelo</button>
+          <button class="icon-button danger" id="deleteTemplate" type="button" aria-label="Excluir modelo" title="Excluir modelo">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"/></svg>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading"><div><span class="step">02</span><h2>Formato</h2></div><span class="limit">máx. 120 × 120 mm</span></div>
+        <div class="format-grid">
+          <label class="field"><span>Tamanho</span><select id="preset"></select></label>
+          <fieldset class="field orientation"><legend>Orientação</legend>
+            <label><input type="radio" name="orientation" value="portrait" checked><span>Retrato</span></label>
+            <label><input type="radio" name="orientation" value="landscape"><span>Paisagem</span></label>
+          </fieldset>
+          <label class="field"><span>Largura (mm)</span><input id="width" type="number" min="20" max="120" step="0.1"></label>
+          <label class="field"><span>Altura (mm)</span><input id="height" type="number" min="20" max="120" step="0.1"></label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading"><div><span class="step">03</span><h2>Dados da etiqueta</h2></div></div>
+        <div class="form-grid">
+          <label class="field span-2"><span>Nome da empresa</span><input id="workshop" maxlength="80" value="Nome da Empresa"></label>
+          <label class="field span-2"><span>Telefone / WhatsApp</span><input id="contact" maxlength="50" value="16 988881234" inputmode="tel"></label>
+          <label class="field"><span>Cliente <em>opcional</em></span><input id="customer" maxlength="50"></label>
+          <label class="field"><span>Placa <em>opcional</em></span><input id="plate" maxlength="10" autocapitalize="characters"></label>
+          <label class="field span-2"><span>Veículo <em>opcional</em></span><input id="vehicle" maxlength="60"></label>
+          <label class="field"><span>Data do serviço</span><input id="serviceDate" type="text" placeholder="dd/mm/aaaa" inputmode="numeric"></label>
+          <label class="field"><span>Quilometragem atual</span><input id="currentKm" placeholder="Ex.: 82.450 km" inputmode="numeric"></label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div><span class="step">04</span><h2>Próximas manutenções</h2></div>
+          <button class="text-button" id="addMaintenance" type="button">+ Campo personalizado</button>
+        </div>
+        <p class="helper">Informe quilometragem, data ou ambos. O texto será ajustado sem cortes.</p>
+        <div id="maintenanceList" class="maintenance-list"></div>
+        <label class="field notes-field"><span>Observação <em>opcional</em></span>
+          <textarea id="notes" rows="2" maxlength="160" placeholder="Ex.: Retorne no prazo indicado."></textarea>
+        </label>
+      </section>
+
+      <section class="panel output-panel">
+        <div class="copies-control">
+          <label for="copies">Cópias no PDF</label>
+          <div class="stepper"><button id="minusCopy" type="button" aria-label="Diminuir cópias">−</button><input id="copies" type="number" min="1" max="100" value="1"><button id="plusCopy" type="button" aria-label="Aumentar cópias">+</button></div>
+        </div>
+        <button class="generate-button" id="generatePdf" type="button">
+          <span>Gerar PDF</span>
+          <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 19h14"/></svg>
+        </button>
+      </section>
+    </section>
+
+    <aside class="preview-column" aria-label="Pré-visualização">
+      <div class="preview-card">
+        <div class="preview-header">
+          <div><p class="eyebrow">PRÉ-VISUALIZAÇÃO FIEL</p><h2 id="previewSize">50 × 80 mm</h2></div>
+          <span class="live"><i></i> ao vivo</span>
+        </div>
+        <div class="preview-stage" id="previewStage">
+          <iframe id="pdfPreview" title="Pré-visualização do PDF" loading="eager"></iframe>
+        </div>
+        <p class="preview-note">A prévia usa o mesmo PDF que será baixado. Imprima em tamanho real, escala 100%.</p>
+      </div>
+    </aside>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <dialog id="nameDialog">
+    <form method="dialog" class="dialog-card">
+      <p class="eyebrow">SALVAR MODELO</p><h2>Dê um nome a esta configuração</h2>
+      <label class="field"><span>Nome do modelo</span><input id="templateName" maxlength="40" autocomplete="off"></label>
+      <div class="dialog-actions"><button class="button secondary" value="cancel">Cancelar</button><button class="button dark" id="confirmTemplate" value="default">Salvar</button></div>
+    </form>
+  </dialog>
+
+  <script src="pdf.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
